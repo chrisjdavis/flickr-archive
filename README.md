@@ -2,6 +2,36 @@
 
 Browse your exported Flickr data locally after leaving Flickr. Import your ZIP export once, then explore your photostream, albums, comments, and tags in a clean read-only web UI.
 
+## Screenshots
+
+**Photostream** — masonry grid with date-sorted photos and adjustable column layout.
+
+![Photostream](docs/screenshots/photostream.png)
+
+**Photo detail** — full-size image with metadata, tags, and comments.
+
+![Photo detail](docs/screenshots/photo-detail.png)
+
+**Albums** — cover previews for every album in your export.
+
+![Albums](docs/screenshots/albums.png)
+
+**Album view** — photos in Flickr album order.
+
+![Album detail](docs/screenshots/album-detail.png)
+
+**Search** — full-text search across titles, descriptions, and tags.
+
+![Search](docs/screenshots/search.png)
+
+**About** — archive stats and imported profile info.
+
+![About](docs/screenshots/about.png)
+
+**Mobile** — photo detail on a phone-sized viewport.
+
+![Photo detail on mobile](docs/screenshots/photo-detail-mobile.png)
+
 ## Requirements
 
 - Node.js 20+
