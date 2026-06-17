@@ -1,0 +1,22 @@
+{
+  "id": "100000001",
+  "name": "First Photo",
+  "description": "A photo about <b>testing</b> and cms tags.",
+  "count_views": "10",
+  "count_comments": "1",
+  "date_taken": "2015-06-01 10:00:00",
+  "date_imported": "2015-06-01 11:00:00",
+  "license": "All Rights Reserved",
+  "comments": [
+    {
+      "id": "comment-1",
+      "date": "2015-06-02 09:00:00",
+      "user": "https://www.flickr.com/photos/someuser/",
+      "comment": "Nice shot!"
+    }
+  ],
+  "tags": [
+    { "tag": "test", "user": "https://www.flickr.com/photos/testuser/" },
+    { "tag": "cms", "user": "https://www.flickr.com/photos/testuser/" }
+  ]
+}

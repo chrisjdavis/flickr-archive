@@ -1,0 +1,14 @@
+{
+  "screen_name": "Test User",
+  "real_name": "Test Real Name",
+  "path_alias": "testuser",
+  "description": "A test Flickr archive account.",
+  "join_date": "2010-01-01 12:00:00",
+  "profile_url": "https://www.flickr.com/people/testuser/",
+  "stats": {
+    "view_counts": {
+      "photos": "100",
+      "total": 100
+    }
+  }
+}

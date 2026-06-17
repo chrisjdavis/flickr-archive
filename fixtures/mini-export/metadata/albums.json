@@ -1,0 +1,13 @@
+{
+  "albums": [
+    {
+      "id": "72157600000000001",
+      "title": "Mini Album",
+      "description": "Test album",
+      "photo_count": "2",
+      "created": "1300000000",
+      "cover_photo": "https://www.flickr.com/photos/testuser/100000002",
+      "photos": ["100000001", "100000002"]
+    }
+  ]
+}

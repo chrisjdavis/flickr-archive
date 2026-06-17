@@ -1,36 +1,123 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Flickr Archive
 
-## Getting Started
+Browse your exported Flickr data locally after leaving Flickr. Import your ZIP export once, then explore your photostream, albums, comments, and tags in a clean read-only web UI.
 
-First, run the development server:
+## Requirements
+
+- Node.js 20+
+- A Flickr data export (metadata `*_part1.zip` + `data-download-*.zip` files)
+
+## Quick start
 
 ```bash
+npm install
+cp .env.example .env
+
+# Option A: import in the browser
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Open http://localhost:3000/import
+
+# Option B: import via CLI
+npm run import -- /path/to/flickr-export
+npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Import
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### In the app
 
-## Learn More
+Go to [http://localhost:3000/import](http://localhost:3000/import) while the dev server is running and upload your Flickr export ZIP files (`*_part1.zip` and `data-download-*.zip`).
 
-To learn more about Next.js, take a look at the following resources:
+### CLI
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run import -- /path/to/flickr-export [--output ./archive] [--force]
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Flag | Description |
+|------|-------------|
+| `--output`, `-o` | Archive output directory (default: `./archive`) |
+| `--force`, `-f` | Re-import: clears existing media, thumbs, and database |
 
-## Deploy on Vercel
+The import pipeline:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Extracts metadata JSON and original media files from your ZIPs
+2. Matches `photo_<id>.json` metadata to `*_<id>_o.<ext>` media files
+3. Generates JPEG thumbnails for images
+4. Builds a SQLite index with FTS5 search over titles, descriptions, and tags
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Output layout:
+
+```
+archive/
+├── index.sqlite
+├── media/     # original files from Flickr
+└── thumbs/    # generated thumbnails
+```
+
+## Environment
+
+```
+FLICKR_ARCHIVE_PATH=./archive
+IMPORT_ENABLED=true
+IMPORT_SECRET=your-long-random-password
+```
+
+| Variable | Description |
+|----------|-------------|
+| `FLICKR_ARCHIVE_PATH` | Archive output directory (default: `./archive`) |
+| `IMPORT_ENABLED` | Set to `false` to disable web import entirely. Recommended on public servers after the archive is built. Defaults to enabled. |
+| `IMPORT_SECRET` | Required in production while web import is enabled. Hides Import from the public nav and requires this password at `/import`. Leave unset for local development only. |
+
+For local development, leave `IMPORT_SECRET` unset and import works without a password. **Production servers refuse to start without `IMPORT_SECRET` unless `IMPORT_ENABLED=false`.** After importing, set `IMPORT_ENABLED=false` and restart to remove the import UI and API entirely. CLI import (`npm run import`) still works over SSH regardless of this setting.
+
+### Security notes
+
+- Upload size is capped at 2 GiB per file and 10 GiB per session (see `src/lib/import-limits.ts`).
+- ZIP extraction validates paths and limits uncompressed size to prevent zip-slip and zip bombs.
+- Import password attempts are rate-limited (8 per 15 minutes per IP).
+- Place a reverse proxy body size limit in front of the app for defense in depth.
+
+## Routes
+
+| Route | Description |
+|-------|-------------|
+| `/` | Photostream (newest first, paginated) |
+| `/photos/[id]` | Photo detail with tags and comments |
+| `/albums` | Album list |
+| `/albums/[id]` | Album grid |
+| `/search?q=` | Full-text search |
+| `/about` | Imported profile and stats |
+| `/import` | Upload Flickr export ZIPs |
+
+## Scripts
+
+```bash
+npm run dev        # Start dev server
+npm run build      # Production build
+npm run start      # Start production server
+npm run import     # Import Flickr export
+npm run test       # Run tests
+npm run typecheck  # TypeScript check
+```
+
+## Testing
+
+```bash
+npm test
+```
+
+Tests cover photo ID matching, JSON parsing, and a full mini-import fixture.
+
+## What's not included (Week 1)
+
+- Public user authentication
+- Map/geotags, groups, contacts, Flickr Mail
+- EXIF panel
+- Static export / Docker
+
+## License
+
+Apache License 2.0. See [LICENSE](LICENSE).
