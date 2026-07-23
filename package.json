@@ -17,7 +17,7 @@
     "adm-zip": "^0.6.0",
     "better-sqlite3": "^12.11.1",
     "date-fns": "^4.4.0",
-    "next": "15.5.19",
+    "next": "15.5.21",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "sanitize-html": "^2.17.5",
