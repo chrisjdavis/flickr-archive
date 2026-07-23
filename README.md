@@ -1,5 +1,7 @@
 # Flickr Archive
 
+> **Deploying on Vercel?** Use the [`vercel-support`](https://github.com/chrisjdavis/flickr-archive/tree/vercel-support) branch — see its [Deploy on Vercel](https://github.com/chrisjdavis/flickr-archive/blob/vercel-support/README.md#deploy-on-vercel) guide. This (`main`) branch targets local disk hosting.
+
 Browse your exported Flickr data locally after leaving Flickr. Import your ZIP export once, then explore your photostream, albums, comments, and tags in a clean read-only web UI.
 
 ## Screenshots
@@ -110,15 +112,6 @@ For local development, leave `IMPORT_SECRET` unset and import works without a pa
 - Import password attempts are rate-limited (8 per 15 minutes per IP).
 - Place a reverse proxy body size limit in front of the app for defense in depth.
 
-## Deploy on Vercel
-
-`main` is oriented around a local disk archive (`./archive`). **Vercel support** (Blob-backed media + SQLite, upload script, and deploy env docs) lives on the [`vercel-support`](https://github.com/chrisjdavis/flickr-archive/tree/vercel-support) branch.
-
-- Branch: [`vercel-support`](https://github.com/chrisjdavis/flickr-archive/tree/vercel-support)
-- Full steps: [Deploy on Vercel in that branch’s README](https://github.com/chrisjdavis/flickr-archive/blob/vercel-support/README.md#deploy-on-vercel)
-
-Point your Vercel project’s Production branch tracking at `vercel-support` (Settings → Environments → Production), then follow that guide for Blob upload and env vars.
-
 ## Routes
 
 | Route | Description |
@@ -156,7 +149,6 @@ Tests cover photo ID matching, JSON parsing, and a full mini-import fixture.
 - Map/geotags, groups, contacts, Flickr Mail
 - EXIF panel
 - Static export / Docker
-- Vercel Blob hosting on `main` — see the [`vercel-support`](https://github.com/chrisjdavis/flickr-archive/tree/vercel-support) branch
 
 ## License
 
