@@ -113,30 +113,92 @@ TRUST_PROXY=false
 
 For local development, leave `IMPORT_SECRET` unset and import works without a password. **Production leaves web import off unless you set `IMPORT_ENABLED=true` and `IMPORT_SECRET`.** After importing, set `IMPORT_ENABLED=false` (or omit it) and restart. CLI import (`npm run import`) still works over SSH regardless of this setting.
 
-### Deploy on Vercel
+## Deploy on Vercel
 
-Vercel has no persistent disk, so the archive must live in **Vercel Blob** (media + SQLite). Web import is disabled on Vercel; import locally, then upload.
+Vercel has **no persistent disk**. The photostream cannot use a local `./archive` on the server. Instead:
 
-1. Import locally: `npm run import -- /path/to/flickr-export` (or use `/import` in `npm run dev`).
-2. In the Vercel project, create a **Blob** store and copy `BLOB_READ_WRITE_TOKEN` into `.env.local`.
-3. Upload the archive:
+1. Import on your machine (CLI or local `/import`)
+2. Upload `archive/` to **Vercel Blob**
+3. Point the deployed app at that Blob store with env vars
+
+Web import (`/import`) is **always disabled** on Vercel (`VERCEL=1`). Do not set `IMPORT_ENABLED=true` there.
+
+### 1. Connect the Git branch
+
+In the Vercel project:
+
+1. **Settings → Environments → Production**
+2. Under **Branch Tracking**, set the branch (e.g. `vercel-support` or `main`)
+3. Save
+
+Pushes to that branch become Production deployments. (The older **Settings → Git → Production Branch** control may not appear in newer dashboards.)
+
+### 2. Create a Blob store
+
+1. Vercel project → **Storage** → create a **Blob** store
+2. Copy `BLOB_READ_WRITE_TOKEN` into a local `.env.local` (never commit it)
+
+### 3. Import locally, then upload
 
 ```bash
-export BLOB_READ_WRITE_TOKEN=vercel_blob_...
-npm run upload:blob
+# Build the archive on disk (once)
+npm run import -- /path/to/flickr-export
+
+# Upload media/, thumbs/, and index.sqlite to Blob
+export BLOB_READ_WRITE_TOKEN=vercel_blob_rw_...
+npm run upload:blob          # optional: --dry-run first
 ```
 
-4. Set these on the Vercel project (Production) and redeploy:
+The script prints the exact env values to set, including `BLOB_PUBLIC_BASE_URL`.
 
-| Variable | Value |
-|----------|--------|
-| `ARCHIVE_STORAGE` | `blob` |
-| `BLOB_PUBLIC_BASE_URL` | value printed by the upload script |
-| `BLOB_ARCHIVE_PREFIX` | `flickr-archive` (if you changed the default, match it) |
+Expected URL shape (no trailing slash):
 
-5. Browse the deployment. Photos load from Blob CDN URLs; SQLite is fetched into `/tmp` per serverless isolate.
+```text
+https://<store-id>.public.blob.vercel-storage.com/flickr-archive
+```
 
-Re-run `npm run upload:blob` after a local re-import (`allowOverwrite` updates existing objects).
+That base must include the `/flickr-archive` prefix (or whatever you set as `BLOB_ARCHIVE_PREFIX`). The app loads SQLite from `{BLOB_PUBLIC_BASE_URL}/index.sqlite` and images from `{BLOB_PUBLIC_BASE_URL}/media/...` and `.../thumbs/...`.
+
+Re-run `npm run upload:blob` after a local re-import; uploads use `allowOverwrite`.
+
+### 4. Set Production env vars and redeploy
+
+In **Settings → Environment Variables** (Production), set:
+
+| Variable | Required | Value |
+|----------|----------|--------|
+| `ARCHIVE_STORAGE` | **yes** | `blob` (must not be `local`) |
+| `BLOB_PUBLIC_BASE_URL` | **yes** | exact URL printed by `upload:blob` |
+| `BLOB_ARCHIVE_PREFIX` | if non-default | must match the upload prefix (default `flickr-archive`) |
+| `BLOB_READ_WRITE_TOKEN` | optional at runtime | only needed again for re-uploads from CI/local |
+
+Do **not** rely on `FLICKR_ARCHIVE_PATH` on Vercel. Leave `IMPORT_ENABLED` unset/false.
+
+**Redeploy after changing env vars** (or push a new commit). Env changes do not apply to an already-running deployment until it rebuilds.
+
+### 5. Verify
+
+- Home page shows the photostream (not “Archive not imported”)
+- **About** shows Storage: **Vercel Blob**
+- Thumb URLs look like `https://….public.blob.vercel-storage.com/flickr-archive/thumbs/….jpg`
+
+### Troubleshooting: “Archive not imported” on Vercel
+
+That screen means the app could not download `index.sqlite` from Blob (or is still in local-disk mode).
+
+| Check | What to look for |
+|-------|------------------|
+| `ARCHIVE_STORAGE` | Must be `blob`. If set to `local` (e.g. copied from `.env.example`), Vercel ignores Blob and looks for `./archive` on disk. |
+| `BLOB_PUBLIC_BASE_URL` | Must include the prefix, e.g. `…/flickr-archive`, not only the store hostname. |
+| Blob object exists | Open `{BLOB_PUBLIC_BASE_URL}/index.sqlite` in a browser; it should download (public). |
+| Redeploy | Confirm the latest Production deployment was built **after** the env vars were saved. |
+| Branch | Confirm Production branch tracking matches the branch you pushed. |
+
+Optional dry-run before a long upload:
+
+```bash
+npm run upload:blob -- --dry-run
+```
 
 ### Public hosting
 
