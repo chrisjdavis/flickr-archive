@@ -22,5 +22,13 @@ export const MAX_IMAGE_DIMENSION = 16_384;
 export const AUTH_RATE_LIMIT_ATTEMPTS = 8;
 export const AUTH_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 
-/** Import auth cookie lifetime (7 days). */
-export const IMPORT_AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
+/** Upload attempts per IP (authorized operators still capped lightly). */
+export const UPLOAD_RATE_LIMIT_ATTEMPTS = 30;
+export const UPLOAD_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+
+/** Import-start attempts per IP. */
+export const IMPORT_START_RATE_LIMIT_ATTEMPTS = 5;
+export const IMPORT_START_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+
+/** Import auth cookie lifetime (24 hours). */
+export const IMPORT_AUTH_COOKIE_MAX_AGE = 60 * 60 * 24;

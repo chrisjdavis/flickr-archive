@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getDbPath, getMediaDir } from "./db";
+import { isBlobArchiveMode } from "./storage-mode";
 
 export type ArchiveFilesystemInfo = {
   dbPath: string;
@@ -8,6 +9,7 @@ export type ArchiveFilesystemInfo = {
   dbModified: Date;
   mediaRoot: string;
   mediaSizeBytes: number | null;
+  storageMode: "local" | "blob";
 };
 
 const MEDIA_SIZE_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -49,6 +51,18 @@ function cachedMediaSize(mediaRoot: string): number | null {
 export function getArchiveFilesystemInfo(): ArchiveFilesystemInfo {
   const dbPath = getDbPath();
   const stat = fs.statSync(dbPath);
+
+  if (isBlobArchiveMode()) {
+    return {
+      dbPath: "index.sqlite",
+      dbSizeBytes: stat.size,
+      dbModified: stat.mtime,
+      mediaRoot: "Vercel Blob",
+      mediaSizeBytes: null,
+      storageMode: "blob",
+    };
+  }
+
   const mediaRoot = getMediaDir();
   const mediaSizeBytes = cachedMediaSize(mediaRoot);
 
@@ -58,6 +72,7 @@ export function getArchiveFilesystemInfo(): ArchiveFilesystemInfo {
     dbModified: stat.mtime,
     mediaRoot,
     mediaSizeBytes,
+    storageMode: "local",
   };
 }
 
@@ -70,12 +85,4 @@ export function formatBytes(bytes: number): string {
 
 export function formatShortDate(date: Date): string {
   return date.toISOString().replace("T", " ").slice(0, 16);
-}
-
-export function shortenPath(p: string): string {
-  const home = process.env.HOME ?? process.env.USERPROFILE;
-  if (home && p.startsWith(home)) {
-    return "~" + p.slice(home.length);
-  }
-  return p;
 }

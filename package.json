@@ -11,9 +11,11 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "import": "tsx scripts/import.ts",
+    "upload:blob": "tsx scripts/upload-to-blob.ts",
     "test": "vitest run"
   },
   "dependencies": {
+    "@vercel/blob": "^2.6.1",
     "adm-zip": "^0.6.0",
     "better-sqlite3": "^12.11.1",
     "date-fns": "^4.4.0",

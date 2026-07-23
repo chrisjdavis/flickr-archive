@@ -91,24 +91,71 @@ archive/
 
 ```
 FLICKR_ARCHIVE_PATH=./archive
-IMPORT_ENABLED=true
-IMPORT_SECRET=your-long-random-password
+ARCHIVE_STORAGE=local
+BLOB_PUBLIC_BASE_URL=
+BLOB_ARCHIVE_PREFIX=flickr-archive
+BLOB_READ_WRITE_TOKEN=
+IMPORT_ENABLED=false
+IMPORT_SECRET=
+TRUST_PROXY=false
 ```
 
 | Variable | Description |
 |----------|-------------|
 | `FLICKR_ARCHIVE_PATH` | Archive output directory (default: `./archive`) |
-| `IMPORT_ENABLED` | Set to `false` to disable web import entirely. Recommended on public servers after the archive is built. Defaults to enabled. |
-| `IMPORT_SECRET` | Required in production while web import is enabled. Hides Import from the public nav and requires this password at `/import`. Leave unset for local development only. |
+| `ARCHIVE_STORAGE` | `local` (default) or `blob` for Vercel Blob-backed media + SQLite |
+| `BLOB_PUBLIC_BASE_URL` | Public base URL printed by `npm run upload:blob` |
+| `BLOB_ARCHIVE_PREFIX` | Pathname prefix in the Blob store (default `flickr-archive`) |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob token — required for `upload:blob` |
+| `IMPORT_ENABLED` | Web import switch. **Production is opt-in:** unset/false keeps import off. Always disabled on Vercel. Local/dev defaults to enabled when unset. |
+| `IMPORT_SECRET` | Required in production when `IMPORT_ENABLED=true` on a disk host. |
+| `TRUST_PROXY` | Set `true` only behind a reverse proxy that overwrites `X-Forwarded-For` / `X-Real-IP`. |
 
-For local development, leave `IMPORT_SECRET` unset and import works without a password. **Production servers refuse to start without `IMPORT_SECRET` unless `IMPORT_ENABLED=false`.** After importing, set `IMPORT_ENABLED=false` and restart to remove the import UI and API entirely. CLI import (`npm run import`) still works over SSH regardless of this setting.
+For local development, leave `IMPORT_SECRET` unset and import works without a password. **Production leaves web import off unless you set `IMPORT_ENABLED=true` and `IMPORT_SECRET`.** After importing, set `IMPORT_ENABLED=false` (or omit it) and restart. CLI import (`npm run import`) still works over SSH regardless of this setting.
+
+### Deploy on Vercel
+
+Vercel has no persistent disk, so the archive must live in **Vercel Blob** (media + SQLite). Web import is disabled on Vercel; import locally, then upload.
+
+1. Import locally: `npm run import -- /path/to/flickr-export` (or use `/import` in `npm run dev`).
+2. In the Vercel project, create a **Blob** store and copy `BLOB_READ_WRITE_TOKEN` into `.env.local`.
+3. Upload the archive:
+
+```bash
+export BLOB_READ_WRITE_TOKEN=vercel_blob_...
+npm run upload:blob
+```
+
+4. Set these on the Vercel project (Production) and redeploy:
+
+| Variable | Value |
+|----------|--------|
+| `ARCHIVE_STORAGE` | `blob` |
+| `BLOB_PUBLIC_BASE_URL` | value printed by the upload script |
+| `BLOB_ARCHIVE_PREFIX` | `flickr-archive` (if you changed the default, match it) |
+
+5. Browse the deployment. Photos load from Blob CDN URLs; SQLite is fetched into `/tmp` per serverless isolate.
+
+Re-run `npm run upload:blob` after a local re-import (`allowOverwrite` updates existing objects).
+
+### Public hosting
+
+This app is a **public photostream**: pages and media URLs are unauthenticated by design. Do not host private photos on a public URL.
+
+Hardening checklist:
+
+1. Keep web import off on public hosts (always off on Vercel; use CLI + `upload:blob`).
+2. On a VPS, if you must use web import briefly, set a long random `IMPORT_SECRET`, then disable import again.
+3. Terminate TLS at a reverse proxy (or use Vercel HTTPS); the app sends HSTS in production.
+4. On a VPS, set proxy body-size limits and `TRUST_PROXY=true` only when the proxy strips/overwrites forwarded IP headers.
 
 ### Security notes
 
 - Upload size is capped at 2 GiB per file and 10 GiB per session (see `src/lib/import-limits.ts`).
 - ZIP extraction validates paths and limits uncompressed size to prevent zip-slip and zip bombs.
-- Import password attempts are rate-limited (8 per 15 minutes per IP).
-- Place a reverse proxy body size limit in front of the app for defense in depth.
+- Import password, upload, and import-start attempts are rate-limited per IP.
+- Import sessions use short-lived HMAC-signed cookies (24h), not a static hash of the password.
+- Place a reverse proxy body size limit in front of the app for defense in depth (VPS).
 
 ## Routes
 
@@ -125,12 +172,13 @@ For local development, leave `IMPORT_SECRET` unset and import works without a pa
 ## Scripts
 
 ```bash
-npm run dev        # Start dev server
-npm run build      # Production build
-npm run start      # Start production server
-npm run import     # Import Flickr export
-npm run test       # Run tests
-npm run typecheck  # TypeScript check
+npm run dev          # Start dev server
+npm run build        # Production build
+npm run start        # Start production server
+npm run import       # Import Flickr export (local disk)
+npm run upload:blob  # Upload local archive/ to Vercel Blob
+npm run test         # Run tests
+npm run typecheck    # TypeScript check
 ```
 
 ## Testing
@@ -139,7 +187,7 @@ npm run typecheck  # TypeScript check
 npm test
 ```
 
-Tests cover photo ID matching, JSON parsing, and a full mini-import fixture.
+Tests cover photo ID matching, JSON parsing, a full mini-import fixture, and import-auth / rate-limit hardening.
 
 ## What's not included (Week 1)
 
@@ -147,6 +195,7 @@ Tests cover photo ID matching, JSON parsing, and a full mini-import fixture.
 - Map/geotags, groups, contacts, Flickr Mail
 - EXIF panel
 - Static export / Docker
+- In-browser import on Vercel (use local import + `upload:blob`)
 
 ## License
 

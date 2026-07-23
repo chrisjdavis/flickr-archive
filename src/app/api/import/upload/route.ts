@@ -4,11 +4,25 @@ export const maxDuration = 300;
 import { NextRequest, NextResponse } from "next/server";
 import { isImportRunning } from "@/import/import-state";
 import { denyImportUnlessAuthorized, getImportOwnerToken } from "@/lib/import-auth";
+import {
+  UPLOAD_RATE_LIMIT_ATTEMPTS,
+  UPLOAD_RATE_LIMIT_WINDOW_MS,
+} from "@/lib/import-limits";
 import { ensureUploadSession, saveSingleZip } from "@/lib/import-api";
+import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   const denied = await denyImportUnlessAuthorized();
   if (denied) return denied;
+
+  const ip = clientIp(request);
+  const limit = checkRateLimit(`import-upload:${ip}`, UPLOAD_RATE_LIMIT_ATTEMPTS, UPLOAD_RATE_LIMIT_WINDOW_MS);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: "Too many uploads. Try again later." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } }
+    );
+  }
 
   try {
     const contentType = request.headers.get("content-type") ?? "";

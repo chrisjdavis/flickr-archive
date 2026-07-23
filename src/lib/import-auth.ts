@@ -1,9 +1,15 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { IMPORT_AUTH_COOKIE_MAX_AGE } from "./import-limits";
 
 export const IMPORT_AUTH_COOKIE = "flickr-archive-import";
+
+type SessionPayload = {
+  v: 1;
+  exp: number;
+  jti: string;
+};
 
 export function isImportProtected(): boolean {
   return Boolean(process.env.IMPORT_SECRET?.trim());
@@ -14,37 +20,92 @@ export function isImportExplicitlyDisabled(): boolean {
   return flag === "false" || flag === "0" || flag === "no";
 }
 
+export function isImportExplicitlyEnabled(): boolean {
+  const flag = process.env.IMPORT_ENABLED?.trim().toLowerCase();
+  return flag === "true" || flag === "1" || flag === "yes";
+}
+
 export function isImportEnabled(): boolean {
   if (isImportExplicitlyDisabled()) return false;
-  if (process.env.NODE_ENV === "production" && !isImportProtected()) {
-    return false;
+
+  // Web import needs a persistent local disk — not available on Vercel serverless.
+  if (process.env.VERCEL) return false;
+
+  if (process.env.NODE_ENV === "production") {
+    // Production is opt-in: require explicit enable + secret.
+    return isImportExplicitlyEnabled() && isImportProtected();
   }
+
+  // Local/dev: enabled unless explicitly disabled; password optional.
   return true;
 }
 
-export function expectedAuthToken(): string | null {
+function importSecret(): string | null {
   const secret = process.env.IMPORT_SECRET?.trim();
+  return secret || null;
+}
+
+function signPayload(payloadB64: string, secret: string): string {
+  return createHmac("sha256", secret).update(payloadB64).digest("base64url");
+}
+
+/** Issue a short-lived signed import session cookie value. */
+export function createImportSessionToken(): string | null {
+  const secret = importSecret();
   if (!secret) return null;
-  return createHash("sha256").update(`${secret}:import-access`).digest("hex");
+
+  const payload: SessionPayload = {
+    v: 1,
+    exp: Math.floor(Date.now() / 1000) + IMPORT_AUTH_COOKIE_MAX_AGE,
+    jti: randomBytes(16).toString("hex"),
+  };
+  const payloadB64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  const sig = signPayload(payloadB64, secret);
+  return `${payloadB64}.${sig}`;
+}
+
+/** Verify a signed session cookie; returns jti on success. */
+export function verifyImportSessionToken(cookieValue: string | undefined): string | null {
+  if (!cookieValue) return null;
+  const secret = importSecret();
+  if (!secret) return null;
+
+  const parts = cookieValue.split(".");
+  if (parts.length !== 2) return null;
+  const [payloadB64, sig] = parts;
+  if (!payloadB64 || !sig) return null;
+
+  const expectedSig = signPayload(payloadB64, secret);
+  try {
+    const actual = Buffer.from(sig);
+    const target = Buffer.from(expectedSig);
+    if (actual.length !== target.length || !timingSafeEqual(actual, target)) {
+      return null;
+    }
+  } catch {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8")) as SessionPayload;
+    if (parsed.v !== 1 || typeof parsed.jti !== "string" || typeof parsed.exp !== "number") {
+      return null;
+    }
+    if (!/^[a-f0-9]{32}$/.test(parsed.jti)) return null;
+    if (parsed.exp < Math.floor(Date.now() / 1000)) return null;
+    return parsed.jti;
+  } catch {
+    return null;
+  }
 }
 
 export function isImportAuthorized(cookieValue: string | undefined): boolean {
   if (!isImportProtected()) return true;
-
-  const expected = expectedAuthToken();
-  if (!expected || !cookieValue) return false;
-
-  try {
-    const actual = Buffer.from(cookieValue, "hex");
-    const target = Buffer.from(expected, "hex");
-    return actual.length === target.length && timingSafeEqual(actual, target);
-  } catch {
-    return false;
-  }
+  return verifyImportSessionToken(cookieValue) !== null;
 }
 
 export function verifyImportSecret(submitted: string): boolean {
-  const secret = process.env.IMPORT_SECRET?.trim();
+  const secret = importSecret();
   if (!secret) return true;
 
   try {
@@ -75,13 +136,11 @@ export async function getImportOwnerToken(): Promise<string> {
 
   const cookieStore = await cookies();
   const cookieValue = cookieStore.get(IMPORT_AUTH_COOKIE)?.value;
-  if (!isImportAuthorized(cookieValue)) {
+  const jti = verifyImportSessionToken(cookieValue);
+  if (!jti) {
     throw new Error("Unauthorized.");
   }
-
-  const token = expectedAuthToken();
-  if (!token) throw new Error("Import is not configured.");
-  return token;
+  return jti;
 }
 
 export function importAuthCookieOptions() {

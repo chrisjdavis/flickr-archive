@@ -5,6 +5,10 @@ export const maxDuration = 300;
 import { NextRequest, NextResponse } from "next/server";
 import { denyImportUnlessAuthorized, getImportOwnerToken } from "@/lib/import-auth";
 import {
+  IMPORT_START_RATE_LIMIT_ATTEMPTS,
+  IMPORT_START_RATE_LIMIT_WINDOW_MS,
+} from "@/lib/import-limits";
+import {
   assertSessionOwner,
   cleanupUploadSession,
   getImportStatusResponse,
@@ -13,6 +17,7 @@ import {
   startImportJob,
   validateSessionId,
 } from "@/lib/import-api";
+import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 
 export async function GET() {
   const denied = await denyImportUnlessAuthorized();
@@ -23,6 +28,19 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const denied = await denyImportUnlessAuthorized();
   if (denied) return denied;
+
+  const ip = clientIp(request);
+  const limit = checkRateLimit(
+    `import-start:${ip}`,
+    IMPORT_START_RATE_LIMIT_ATTEMPTS,
+    IMPORT_START_RATE_LIMIT_WINDOW_MS
+  );
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: "Too many import attempts. Try again later." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } }
+    );
+  }
 
   try {
     const ownerToken = await getImportOwnerToken();

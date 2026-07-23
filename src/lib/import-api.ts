@@ -79,7 +79,9 @@ export function bindSessionOwner(sessionDir: string, ownerToken: string): void {
 
 export function assertSessionOwner(sessionDir: string, ownerToken: string): void {
   const ownerFile = sessionOwnerPath(sessionDir);
-  if (!fs.existsSync(ownerFile)) return;
+  if (!fs.existsSync(ownerFile)) {
+    throw new Error("Invalid upload session.");
+  }
   const owner = fs.readFileSync(ownerFile, "utf8");
   if (owner !== ownerToken) {
     throw new Error("Invalid upload session.");

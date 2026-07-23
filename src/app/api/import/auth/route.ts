@@ -7,7 +7,7 @@ import {
   AUTH_RATE_LIMIT_WINDOW_MS,
 } from "@/lib/import-limits";
 import {
-  expectedAuthToken,
+  createImportSessionToken,
   importAuthCookieOptions,
   IMPORT_AUTH_COOKIE,
   isImportEnabled,
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid import password." }, { status: 401 });
   }
 
-  const token = expectedAuthToken();
+  const token = createImportSessionToken();
   if (!token) {
     return NextResponse.json({ error: "Import is not configured." }, { status: 503 });
   }

@@ -29,7 +29,26 @@ export function checkRateLimit(
   return { allowed: true, retryAfterSeconds: 0 };
 }
 
+/** Clear in-memory buckets (tests only). */
+export function resetRateLimitBuckets(): void {
+  buckets.clear();
+}
+
+export function isTrustProxyEnabled(): boolean {
+  const flag = process.env.TRUST_PROXY?.trim().toLowerCase();
+  return flag === "true" || flag === "1" || flag === "yes";
+}
+
+/**
+ * Client IP for rate limiting.
+ * Only trusts X-Forwarded-For / X-Real-IP when TRUST_PROXY is enabled
+ * (proxy must overwrite those headers).
+ */
 export function clientIp(request: Request): string {
+  if (!isTrustProxyEnabled()) {
+    return "direct";
+  }
+
   const forwarded = request.headers.get("x-forwarded-for");
   if (forwarded) return forwarded.split(",")[0]?.trim() || "unknown";
   return request.headers.get("x-real-ip") ?? "unknown";

@@ -15,8 +15,10 @@ export default async function ImportPage() {
           <div className="mx-auto max-w-md px-6 py-16 text-center">
             <h1 className="font-serif text-[22px] text-[var(--text-primary)]">Import disabled</h1>
             <p className="mt-3 text-[14px] text-[var(--text-secondary)]">
-              Web import is disabled on this server (<code className="font-mono">IMPORT_ENABLED=false</code>
-              ). Use the CLI on the host machine if you need to re-import.
+              Web import is disabled on this server. In production set{" "}
+              <code className="font-mono">IMPORT_ENABLED=true</code> and{" "}
+              <code className="font-mono">IMPORT_SECRET</code> to enable it, or use the CLI on the
+              host machine.
             </p>
           </div>
         </main>

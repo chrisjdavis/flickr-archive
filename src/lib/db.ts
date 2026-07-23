@@ -1,6 +1,8 @@
 import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
+import { blobSqliteReady, BLOB_SQLITE_TMP_PATH } from "./blob-archive";
+import { isBlobArchiveMode } from "./storage-mode";
 
 const projectRoot = process.cwd();
 
@@ -13,10 +15,22 @@ export function getArchivePath(): string {
 }
 
 export function getDbPath(): string {
+  if (isBlobArchiveMode()) {
+    return BLOB_SQLITE_TMP_PATH;
+  }
   return path.join(getArchivePath(), "index.sqlite");
 }
 
 export function assertArchiveExists(): void {
+  if (isBlobArchiveMode()) {
+    if (!blobSqliteReady()) {
+      throw new Error(
+        "Blob archive database is not ready. Ensure BLOB_PUBLIC_BASE_URL is set and prepareBlobSqlite() has run."
+      );
+    }
+    return;
+  }
+
   const dbPath = getDbPath();
   if (!fs.existsSync(dbPath)) {
     throw new Error(
@@ -26,6 +40,15 @@ export function assertArchiveExists(): void {
 }
 
 export function archiveExists(): boolean {
+  // Avoid remote I/O during `next build` — pages render ArchiveMissing at build time.
+  if (process.env.NEXT_PHASE === "phase-production-build") {
+    return false;
+  }
+
+  if (isBlobArchiveMode()) {
+    return Boolean(process.env.BLOB_PUBLIC_BASE_URL?.trim());
+  }
+
   return fs.existsSync(getDbPath());
 }
 
@@ -33,13 +56,28 @@ let dbInstance: Database.Database | null = null;
 
 export function getDb(): Database.Database {
   if (dbInstance) return dbInstance;
+
+  if (isBlobArchiveMode() && !blobSqliteReady()) {
+    throw new Error(
+      "Archive database not prepared yet. Blob mode requires prepareBlobSqlite() during startup."
+    );
+  }
+
   assertArchiveExists();
   const dbPath = getDbPath();
-  const migrator = openWritableDb(dbPath);
-  migrateSchema(migrator);
-  migrator.close();
+
+  if (!isBlobArchiveMode()) {
+    const migrator = openWritableDb(dbPath);
+    migrateSchema(migrator);
+    migrator.close();
+  }
+
   dbInstance = new Database(dbPath, { readonly: true });
-  dbInstance.pragma("journal_mode = WAL");
+  try {
+    dbInstance.pragma("journal_mode = WAL");
+  } catch {
+    // readonly /tmp copy without WAL sidecar — ignore
+  }
   return dbInstance;
 }
 

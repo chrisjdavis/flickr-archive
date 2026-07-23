@@ -1,5 +1,13 @@
+import { blobPublicUrl, isBlobArchiveMode } from "./storage-mode";
+
 export function mediaUrl(relativePath: string, kind: "media" | "thumbs" = "media"): string {
   const safe = relativePath.replace(/\\/g, "/");
+
+  if (isBlobArchiveMode()) {
+    const url = blobPublicUrl(`${kind}/${safe}`);
+    if (url) return url;
+  }
+
   const encoded = safe
     .split("/")
     .filter(Boolean)

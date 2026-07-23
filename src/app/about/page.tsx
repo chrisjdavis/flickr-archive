@@ -7,7 +7,6 @@ import {
   formatBytes,
   formatShortDate,
   getArchiveFilesystemInfo,
-  shortenPath,
 } from "@/lib/archive-info";
 import { getAccount, getArchiveStats } from "@/lib/queries";
 import { sanitizeDescription } from "@/lib/sanitize";
@@ -160,9 +159,9 @@ export default async function AboutPage() {
           style={{ borderColor: "var(--border)" }}
         >
           {[
+            ["Storage", fsInfo.storageMode === "blob" ? "Vercel Blob" : "Local disk"],
             ["Database last updated", formatShortDate(fsInfo.dbModified)],
             ["Database file", `${path.basename(fsInfo.dbPath)} · ${formatBytes(fsInfo.dbSizeBytes)}`],
-            ["Media root", shortenPath(fsInfo.mediaRoot)],
             ["Earliest photo", formatPhotoDate(stats.earliestPhoto)],
             ["Latest photo", formatPhotoDate(stats.latestPhoto)],
             ["Photos", stats.totalPhotos.toLocaleString()],

@@ -5,6 +5,7 @@ import path from "node:path";
 import { Readable } from "node:stream";
 import { NextRequest, NextResponse } from "next/server";
 import { isSafeArchiveFile, resolveArchiveFile } from "@/lib/media";
+import { blobPublicUrl, isBlobArchiveMode } from "@/lib/storage-mode";
 
 const MIME_TYPES: Record<string, string> = {
   ".jpg": "image/jpeg",
@@ -36,6 +37,15 @@ export async function GET(
   const filename = rest.map((segment) => decodeURIComponent(segment)).join("/");
   if (!filename || filename.includes("..")) {
     return NextResponse.json({ error: "Invalid filename" }, { status: 400 });
+  }
+
+  // Blob mode: redirect to the public object URL (CDN).
+  if (isBlobArchiveMode()) {
+    const url = blobPublicUrl(`${kind}/${filename}`);
+    if (!url) {
+      return NextResponse.json({ error: "Blob archive is not configured." }, { status: 503 });
+    }
+    return NextResponse.redirect(url, 308);
   }
 
   const filePath = resolveArchiveFile(kind, filename);

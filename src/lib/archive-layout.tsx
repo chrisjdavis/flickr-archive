@@ -1,7 +1,9 @@
 import { ReactNode } from "react";
 import { ArchiveMissing } from "@/components/ArchiveMissing";
 import { SiteHeader } from "@/components/SiteHeader";
+import { prepareBlobSqlite } from "@/lib/blob-archive";
 import { archiveExists } from "@/lib/db";
+import { isBlobArchiveMode } from "@/lib/storage-mode";
 
 type WithArchiveOptions = { fullWidth?: boolean };
 
@@ -40,6 +42,14 @@ export async function withArchivePage(
   render: () => Promise<ReactNode> | ReactNode,
   { fullWidth = false }: WithArchiveOptions = {}
 ) {
+  if (isBlobArchiveMode()) {
+    try {
+      await prepareBlobSqlite();
+    } catch {
+      return <ArchiveMissing />;
+    }
+  }
+
   if (!archiveExists()) {
     return <ArchiveMissing />;
   }
