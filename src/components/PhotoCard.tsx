@@ -30,8 +30,8 @@ export function PhotoCard({
 
   const cardClass =
     hoverStyle === "border"
-      ? "photo-card-border mb-3 block break-inside-avoid overflow-hidden no-underline"
-      : "photo-card group mb-3 block break-inside-avoid overflow-hidden no-underline";
+      ? "photo-card-border block h-full overflow-hidden no-underline"
+      : "photo-card group block h-full overflow-hidden no-underline";
 
   return (
     <Link

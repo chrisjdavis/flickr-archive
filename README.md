@@ -4,7 +4,7 @@ Browse your exported Flickr data locally after leaving Flickr. Import your ZIP e
 
 ## Screenshots
 
-**Photostream** — masonry grid with date-sorted photos and adjustable column layout.
+**Photostream** — date-sorted photo grid (newest first, left to right by row) with adjustable columns.
 
 ![Photostream](docs/screenshots/photostream.png)
 

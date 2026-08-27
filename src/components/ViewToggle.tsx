@@ -12,7 +12,7 @@ export function ViewToggle({
   onChange: (cols: GridColumns) => void;
 }) {
   const buttons: { cols: GridColumns; icon: React.ComponentType<{ className?: string }>; title: string }[] = [
-    { cols: 4, icon: MasonryToggleIcon, title: "Masonry (4 columns)" },
+    { cols: 4, icon: MasonryToggleIcon, title: "4 columns" },
     { cols: 3, icon: Grid3Icon, title: "3 columns" },
     { cols: 5, icon: Grid5Icon, title: "5 columns" },
   ];
