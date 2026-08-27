@@ -91,6 +91,8 @@ archive/
 
 ```
 FLICKR_ARCHIVE_PATH=./archive
+SITE_NAME=My Archive
+NAV_LINKS=
 ARCHIVE_STORAGE=local
 BLOB_PUBLIC_BASE_URL=
 BLOB_ARCHIVE_PREFIX=flickr-archive
@@ -103,6 +105,8 @@ TRUST_PROXY=false
 | Variable | Description |
 |----------|-------------|
 | `FLICKR_ARCHIVE_PATH` | Archive output directory (default: `./archive`) |
+| `SITE_NAME` | Brand name in the nav and browser title (default: `My Archive`) |
+| `NAV_LINKS` | Optional JSON array of `{ "href", "label", "icon"? }` nav items. Omit for Photostream / Albums / About. Icons: `grid`, `albums`, `user`, `search`, `upload`, `blog`, `external`. Internal paths (`/...`) or `http(s)` URLs. `/import` is ignored here (still auth-gated). |
 | `ARCHIVE_STORAGE` | `local` (default) or `blob` for Vercel Blob-backed media + SQLite |
 | `BLOB_PUBLIC_BASE_URL` | Public base URL printed by `npm run upload:blob` |
 | `BLOB_ARCHIVE_PREFIX` | Pathname prefix in the Blob store (default `flickr-archive`) |
@@ -110,6 +114,12 @@ TRUST_PROXY=false
 | `IMPORT_ENABLED` | Web import switch. **Production is opt-in:** unset/false keeps import off. Always disabled on Vercel. Local/dev defaults to enabled when unset. |
 | `IMPORT_SECRET` | Required in production when `IMPORT_ENABLED=true` on a disk host. |
 | `TRUST_PROXY` | Set `true` only behind a reverse proxy that overwrites `X-Forwarded-For` / `X-Real-IP`. |
+
+Example custom nav (drop Albums, rename About, add an external link):
+
+```bash
+NAV_LINKS='[{"href":"/","label":"Photos","icon":"grid"},{"href":"/about","label":"About me","icon":"user"},{"href":"https://example.com","label":"Blog","icon":"blog"}]'
+```
 
 For local development, leave `IMPORT_SECRET` unset and import works without a password. **Production leaves web import off unless you set `IMPORT_ENABLED=true` and `IMPORT_SECRET`.** After importing, set `IMPORT_ENABLED=false` (or omit it) and restart. CLI import (`npm run import`) still works over SSH regardless of this setting.
 

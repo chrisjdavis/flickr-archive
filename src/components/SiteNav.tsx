@@ -3,28 +3,34 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import {
-  AlbumIcon,
-  CloseIcon,
-  GridIcon,
-  MenuIcon,
-  SearchIcon,
-  UploadIcon,
-  UserIcon,
-} from "./icons";
+import { iconForNavLink } from "@/lib/nav-icons";
+import type { SiteNavLink } from "@/lib/site-config";
+import { navLinkIsActive } from "@/lib/site-config";
+import { CloseIcon, MenuIcon, SearchIcon, UploadIcon } from "./icons";
 
-const NAV_ITEMS = [
-  { href: "/", label: "Photostream", icon: GridIcon, match: (p: string) => p === "/" || p.startsWith("/photos/") },
-  { href: "/albums", label: "Albums", icon: AlbumIcon, match: (p: string) => p.startsWith("/albums") },
-  { href: "/about", label: "About", icon: UserIcon, match: (p: string) => p.startsWith("/about") },
-  {
-    href: "/import",
-    label: "Import",
-    icon: UploadIcon,
-    match: (p: string) => p.startsWith("/import"),
-    importOnly: true as const,
-  },
-];
+type NavItem = SiteNavLink & {
+  Icon: ReturnType<typeof iconForNavLink>;
+  importOnly?: boolean;
+};
+
+function buildNavItems(links: SiteNavLink[], showImport: boolean): NavItem[] {
+  const items: NavItem[] = links.map((link) => ({
+    ...link,
+    Icon: iconForNavLink(link),
+  }));
+
+  if (showImport && !items.some((item) => item.href === "/import")) {
+    items.push({
+      href: "/import",
+      label: "Import",
+      icon: "upload",
+      Icon: UploadIcon,
+      importOnly: true,
+    });
+  }
+
+  return items;
+}
 
 const navLinkClass = (active: boolean) =>
   `flex min-h-[44px] items-center gap-1.5 rounded px-3 py-2 text-[13.5px] no-underline transition-colors ${
@@ -33,11 +39,19 @@ const navLinkClass = (active: boolean) =>
       : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
   }`;
 
-export function SiteNav({ showImport = false }: { showImport?: boolean }) {
+export function SiteNav({
+  showImport = false,
+  siteName,
+  navLinks,
+}: {
+  showImport?: boolean;
+  siteName: string;
+  navLinks: SiteNavLink[];
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const navItems = NAV_ITEMS.filter((item) => !item.importOnly || showImport);
+  const navItems = buildNavItems(navLinks, showImport);
 
   const openSearch = useCallback(() => {
     router.push("/search");
@@ -72,15 +86,19 @@ export function SiteNav({ showImport = false }: { showImport?: boolean }) {
           href="/"
           className="flex min-h-[44px] shrink-0 items-center text-[15px] font-medium tracking-tight text-[var(--text-primary)] no-underline"
         >
-          My Archive
+          {siteName}
         </Link>
 
         <ul className="hidden list-none items-center gap-0.5 md:col-start-2 md:flex">
-          {navItems.map(({ href, label, icon: Icon, match }) => {
-            const active = match(pathname);
+          {navItems.map(({ href, label, Icon }) => {
+            const active = navLinkIsActive(pathname, href);
             return (
-              <li key={href}>
-                <Link href={href} className={navLinkClass(active)} aria-current={active ? "page" : undefined}>
+              <li key={`${href}:${label}`}>
+                <Link
+                  href={href}
+                  className={navLinkClass(active)}
+                  aria-current={active ? "page" : undefined}
+                >
                   <Icon className={active ? "opacity-100" : "opacity-60"} />
                   {label}
                 </Link>
@@ -130,10 +148,10 @@ export function SiteNav({ showImport = false }: { showImport?: boolean }) {
           className="fixed inset-x-0 top-[var(--nav-h)] z-40 border-b border-[var(--border)] bg-[var(--bg-surface)] md:hidden"
         >
           <ul className="list-none p-2">
-            {navItems.map(({ href, label, icon: Icon, match }) => {
-              const active = match(pathname);
+            {navItems.map(({ href, label, Icon }) => {
+              const active = navLinkIsActive(pathname, href);
               return (
-                <li key={href}>
+                <li key={`${href}:${label}`}>
                   <Link
                     href={href}
                     className={`flex min-h-[44px] items-center gap-2 rounded-md px-4 py-3 text-sm no-underline ${
