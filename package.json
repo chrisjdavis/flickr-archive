@@ -14,7 +14,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "adm-zip": "^0.6.0",
+    "adm-zip": "^0.6.1",
     "better-sqlite3": "^12.11.1",
     "date-fns": "^4.4.0",
     "next": "15.5.21",
